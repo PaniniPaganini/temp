@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Happy Emoji 🍗</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #f0f0f5;
+    }
+
+    #timer-display {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      text-align: center;
+      background-color: rgba(255, 69, 0, 0.9);
+      color: white;
+      font-size: 1.2rem;
+      padding: 10px 0;
+      font-weight: bold;
+      z-index: 1000;
+      display: none;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    .timer-urgent {
+      background-color: #8B0000 !important;
+      box-shadow: 0 0 15px rgba(139, 0, 0, 0.8);
+      transition: background-color 0.5s ease;
+    }
+
+    @keyframes blink-animation {
+      0% { opacity: 1; background-color: #8B0000; transform: scale(1); }
+      50% { opacity: 0.8; background-color: #FF0000; transform: scale(1.02); }
+      100% { opacity: 1; background-color: #8B0000; transform: scale(1); }
+    }
+
+    .timer-critical {
+      background-color: #8B0000 !important;
+      animation: blink-animation 0.5s infinite;
+      border-bottom: 3px solid yellow;
+    }
+
+    #game-container {
+      width: 90%;
+      max-width: 600px;
+      text-align: center;
+    }
+    
+    h1 {
+      margin-top: 40px;
+      font-family: 'Comic Sans MS', 'Poppins', sans-serif;
+      font-size: 48px;
+      color: #333;
+      margin-bottom: 30px;
+    }
+
+    #emoji-board {
+      display: flex; 
+      flex-wrap: wrap; 
+      justify-content: center; 
+      margin: 0 auto; 
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .emoji {
+      font-size: 32px;
+      background-color: white;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      padding: 0;
+      cursor: pointer;
+      transition: transform 0.2s, background-color 0.3s;
+      user-select: none;
+      box-sizing: border-box;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 80px;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .emoji:hover {
+      transform: scale(1.1);
+      z-index: 1;
+      background-color: #f9f9f9;
+    }
+
+    #start-btn-container {
+      display: flex;
+      justify-content: center;
+      margin-top: 30px;
+    }
+
+    #start-btn {
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #D43F00;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #start-btn:hover {
+      background-color: #B93B00;
+    }
+
+    @keyframes flash {
+      0% {
+        background-color: #ffcc00;
+        transform: scale(1.2);
+      }
+      50% {
+        background-color: #ffffff;
+        transform: scale(1);
+      }
+      100% {
+        background-color: #ffcc00;
+        transform: scale(1.2);
+      }
+    }
+
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      50% { transform: translateX(5px); }
+      75% { transform: translateX(-5px); }
+      100% { transform: translateX(0); }
+    }
+
+    .matched {
+      animation: flash 0.5s ease-out, shake 0.5s ease-in-out; 
+    }
+
+    .level-1 .emoji { width: calc(25% - 10px); } 
+    .level-2 .emoji,
+    .level-3 .emoji { width: calc(16.66% - 10px); }
+
+    .game-footer {
+      position: fixed;
+      bottom: 10px;
+      width: 100%;
+      text-align: center;
+      font-family: 'Poppins', sans-serif;
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+  <div id="timer-display">剩余时间: <span id="time-left">03:00</span></div>
+
+  <div id="game-container">
+    <h1 id="level-title">Happy Emoji 🍗</h1>
+    <div id="emoji-board"></div>
+    <div id="start-btn-container">
+      <button id="start-btn">Start Game</button>
+    </div>
+  </div>
+
+  <script>
+    const allEmojis = [
+      '😀', '😄', '😆', '😉', '😍', '😎', 
+      '😜', '🤓', '🤩', '🥳', '😏', '😒',
+      '😭', '😤', '😳', '🤗', '🤔', '😊'
+    ];
+
+    let gameData = [];
+    let selectedCards = [];
+    let matched = [];
+    let currentLevel = 1; 
+    let timerInterval = null;
+    let isGameRunning = false;
+
+    const bgMusicNormal = new Audio("https://mp3.joy127.com/music/12658.mp3");
+    bgMusicNormal.loop = true;
+
+    const matchSound = new Audio("https://mp3.joy127.com/music/12657.mp3");
+
+    const bgMusicHard = new Audio("https://mp3.joy127.com/music/12661.mp3"); 
+    bgMusicHard.loop = true;
+
+    const victoryMusic = new Audio("https://mp3.joy127.com/music/12660.mp3");
+
+    const levelConfig = {
+      1: { rows: 4, cols: 4, pairs: 8,  cssClass: 'level-1', msg: "🎉 哎哟，不错哦！", title: "Level 1 🥚" },
+      2: { rows: 6, cols: 6, pairs: 18, cssClass: 'level-2', msg: "😈 Fasten your seatbelt, it's going to be a bumpy night!", title: "Level 2 🐥" },
+      3: { rows: 6, cols: 6, pairs: 18, cssClass: 'level-3', msg: "🏆 大吉大利，今晚吃鸡!", title: "Level 3 🐔", timeLimit: 180 } // 180秒 = 3分钟
+    };
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    function playBackgroundMusic() {
+      bgMusicNormal.pause();
+      bgMusicHard.pause();
+      victoryMusic.pause();
+      victoryMusic.currentTime = 0;
+
+      if (currentLevel === 3) {
+        bgMusicHard.currentTime = 0;
+        bgMusicHard.playbackRate = 1.0;
+        bgMusicHard.play().catch(e => console.log("Audio play failed", e));
+      } else {
+        bgMusicNormal.playbackRate = 1.0;
+        if (currentLevel === 1 || bgMusicNormal.paused) {
+            bgMusicNormal.play().catch(e => console.log("Audio play failed", e));
+        }
+      }
+    }
+
+    function stopAllMusic() {
+      bgMusicNormal.pause();
+      bgMusicHard.pause();
+    }
+
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+      const s = (seconds % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    function createBoard() {
+      const board = document.getElementById('emoji-board');
+      const config = levelConfig[currentLevel];
+      
+      board.innerHTML = '';
+      board.className = '';
+      board.classList.add(config.cssClass);
+      
+      board.style.gridTemplateColumns = `repeat(${config.cols}, auto)`;
+
+      matched = [];
+      selectedCards = [];
+      
+      const currentEmojis = allEmojis.slice(0, config.pairs);
+      
+      gameData = [...currentEmojis, ...currentEmojis].map((emoji, index) => ({
+        id: index,
+        emoji,
+        matched: false,
+      }));
+
+      shuffle(gameData);
+
+      gameData.forEach((card) => {
+        const div = document.createElement('div');
+        div.classList.add('emoji');
+        div.dataset.id = card.id;
+        div.innerText = '❓';
+        div.addEventListener('click', handleCardClick);
+        board.appendChild(div);
+      });
+
+      document.getElementById('level-title').innerText = config.title;
+    }
+
+    function handleCardClick(e) {
+      if (!isGameRunning && currentLevel === 3) return;
+
+      const div = e.target;
+      const id = parseInt(div.dataset.id);
+      const card = gameData.find(c => c.id === id);
+
+      if (selectedCards.length === 2 || card.matched || selectedCards.includes(card)) return;
+
+      div.innerText = card.emoji;
+      selectedCards.push(card);
+      
+      if (selectedCards.length === 2) {
+        setTimeout(() => checkMatch(), 500);
+      }
+    }
+
+    function checkMatch() {
+      const [card1, card2] = selectedCards;
+
+      if (card1.emoji === card2.emoji) {
+        card1.matched = true;
+        card2.matched = true;
+        matched.push(card1, card2);
+        matchSound.play();
+        
+        const div1 = document.querySelector(`[data-id='${card1.id}']`);
+        const div2 = document.querySelector(`[data-id='${card2.id}']`);
+        div1.classList.add('matched');
+        div2.classList.add('matched');
+
+        if (matched.length === gameData.length) {
+          handleLevelComplete();
+        }
+      } else {
+        const div1 = document.querySelector(`[data-id='${card1.id}']`);
+        const div2 = document.querySelector(`[data-id='${card2.id}']`);
+        div1.innerText = '❓';
+        div2.innerText = '❓';
+      }
+
+      selectedCards = [];
+    }
+
+    function handleLevelComplete() {
+      const config = levelConfig[currentLevel];
+      
+      if (currentLevel === 3) {
+        clearInterval(timerInterval);
+        document.getElementById('timer-display').style.display = 'none';
+        stopAllMusic();
+        victoryMusic.play();
+      }
+
+      setTimeout(() => {
+        alert(`${config.msg}`);
+        
+        const btn = document.getElementById('start-btn');
+        btn.style.display = 'block';
+
+        if (currentLevel < 3) {
+          currentLevel++;
+          btn.innerText = "Keep Going";
+        } else {
+          btn.innerText = "梅开二度";
+          currentLevel = 4;
+        }
+      }, 300);
+    }
+
+    function startTimer() {
+      const timerDisplay = document.getElementById('timer-display');
+      const timeSpan = document.getElementById('time-left');
+
+      timerDisplay.style.display = 'block';
+      
+      timerDisplay.classList.remove('timer-urgent', 'timer-critical'); 
+
+      let timeLeft = levelConfig[3].timeLimit;
+      timeSpan.innerText = formatTime(timeLeft);
+
+      bgMusicHard.playbackRate = 1.0; 
+
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        timeSpan.innerText = formatTime(timeLeft);
+
+        if (timeLeft <= 10) {
+           timerDisplay.classList.add('timer-critical');
+           bgMusicHard.playbackRate = 1.5; 
+        } 
+        else if (timeLeft <= 30) {
+           timerDisplay.classList.add('timer-urgent'); 
+           bgMusicHard.playbackRate = 1.2; 
+        }
+
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          isGameRunning = false;
+          stopAllMusic();
+
+          timerDisplay.classList.remove('timer-urgent', 'timer-critical');
+
+          alert("⏰ 很遗憾。继续挑战？");
+          
+          const btn = document.getElementById('start-btn');
+          btn.style.display = 'block';
+          btn.innerText = "Try Again";
+        }
+      }, 1000);
+    }
+
+    document.getElementById('start-btn').addEventListener('click', () => {
+      const btn = document.getElementById('start-btn');
+      
+      if (currentLevel === 4) {
+        currentLevel = 1;
+        victoryMusic.pause();
+        victoryMusic.currentTime = 0;
+        bgMusicNormal.currentTime = 0;
+      }
+
+      playBackgroundMusic();
+
+      createBoard();
+      isGameRunning = true;
+      btn.style.display = 'none';
+
+      if (currentLevel === 3) {
+        startTimer();
+      }
+    });
+
+  </script>
+
+<footer class="game-footer">
+  © 2025 [Lan L.] | Built with Vibe & Logic
+</footer>
+
+</body>
+</html>
